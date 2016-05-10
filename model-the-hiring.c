@@ -1,13 +1,5 @@
 /****************************************
 
-
-BLG312E - Operating Systems HW #3
-Burak Karakan
-150130114
-
-
-*****************************************
-
 The program below models a hiring process for a company.
 The three parts of the hiring components are each modeled as a process.
 The "Registrar" is the main process.
@@ -96,29 +88,29 @@ int finishedThreads = 0;
 
 int main(int argc, char *argv[]){
 
-    // Check the number of arguments, they must be more than 2.
-    if (argc < 2){
-      printf("Not enough variables.");
-      return 0;
-    }
-
-    // Use the time for a more realistic randomization algorithm.
-    srand(time(NULL));
-    
-    // Process declarations.
-    pid_t wecProcess, interviewerProcess; 
-    
-    // Simple counter to use in loops.
-    int counter = 0;
-
-    // Get command line arguments.
-    int numberOfMembers = atoi(argv[2]);
-    int writtenExamDuration = atoi(argv[3]);
-    int interviewDuration = atoi(argv[4]);
-
-    // Assigning the local arguments to global variables.
-    fileName = argv[1];
-    totalNumberOfMembers = numberOfMembers;
+	// Check the number of arguments, they must be more than 2.
+	if (argc < 2){
+	printf("Not enough variables.");
+	return 0;
+	}
+	
+	// Use the time for a more realistic randomization algorithm.
+	srand(time(NULL));
+	
+	// Process declarations.
+	pid_t wecProcess, interviewerProcess; 
+	
+	// Simple counter to use in loops.
+	int counter = 0;
+	
+	// Get command line arguments.
+	int numberOfMembers = atoi(argv[2]);
+	int writtenExamDuration = atoi(argv[3]);
+	int interviewDuration = atoi(argv[4]);
+	
+	// Assigning the local arguments to global variables.
+	fileName = argv[1];
+	totalNumberOfMembers = numberOfMembers;
 	
 	// Allocate the required memory for global usage.
 	pthread_t members[numberOfMembers];
@@ -131,10 +123,10 @@ int main(int argc, char *argv[]){
 	// Basic initializations.
 	memberToThread.duration = 1;					
 	memberToThread.memberId = 2;					
-
+	
 	// The applicants array must be in shared memory as well, in order to different processes to access and modify.
-    ApplicationForm *applicantList;
-    // The file descriptor that returns from shared memory allocation.
+	ApplicationForm *applicantList;
+	// The file descriptor that returns from shared memory allocation.
 	int sharedMemory;
 	// Size of the shared memory.
 	size_t size = NUMBER_OF_APPLICANTS*sizeof(ApplicationForm);
@@ -146,157 +138,157 @@ int main(int argc, char *argv[]){
 		printf("Error while allocating shared memory. Program is terminating.\n");
 		return;
 	}
-   	
-   	// Expand it to the required size.
-   	ftruncate(sharedMemory, size);
-   	// Map the object to the 'applicantList'.
-   	applicantList = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, sharedMemory, 0);
+	   
+	// Expand it to the required size.
+	ftruncate(sharedMemory, size);
+	// Map the object to the 'applicantList'.
+	applicantList = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, sharedMemory, 0);
 	
 	// Check for mapping errors.
 	if(applicantList == MAP_FAILED){
 		printf("Memory mapping failed. Program is terminating.\n");
 		return;
 	}
-
+	
 	// The semaphore to use between processes must be in the shared memory. 
 	sem_t *signalToRegistrar;
-    // Initialize the semaphore for interprocess communication.
-    signalToRegistrar = sem_open ("temporarySem", O_CREAT | O_EXCL, 0644, 0); 
-    // Unlink the temporary semaphore immediately to prevent it existing even after the program faces with an error. 
-    sem_unlink ("temporarySem");   
-
-    // Check for semaphore errors. 
-    if(signalToRegistrar == SEM_FAILED){
-    	printf("Could not create th e semaphore. Program is terminating.\n");
-    }
-
+	// Initialize the semaphore for interprocess communication.
+	signalToRegistrar = sem_open ("temporarySem", O_CREAT | O_EXCL, 0644, 0); 
+	// Unlink the temporary semaphore immediately to prevent it existing even after the program faces with an error. 
+	sem_unlink ("temporarySem");   
+	
+	// Check for semaphore errors. 
+	if(signalToRegistrar == SEM_FAILED){
+		printf("Could not create th e semaphore. Program is terminating.\n");
+	}
+	
 	// Initializing the semaphores.
 	sem_init(&mutex, 0, 1);
 	sem_init(&mutexForApproval, 0, 0);  
 	sem_init(&canProceed, 1, 0); 
-
+	
 	// simulate the application taking process.
 	printf("The Registrar started taking applications.\n");
 	sleep(APPLICATION_TAKING_DURATION); 
 	printf("The Registrar finished taking applications.\n");
-
-
+	
+	
 	// Create a new process to model Written Exam Committee.
-    wecProcess = fork();
-
-    if(wecProcess == 0){
-    	/*----------------------------------*/
-    	/* This is the child -WEC- process. */
+	wecProcess = fork();
+	
+	if(wecProcess == 0){
 		/*----------------------------------*/
-	    printf("The Written Exams Committee started preparing questions.\n");
-
-	    // Open the file.
-	    fileOpen = fopen(fileName, "r");
-	    
-	    // Check file open for errors.
-	    if(fileOpen == NULL){
+		/* This is the child -WEC- process. */
+		/*----------------------------------*/
+		printf("The Written Exams Committee started preparing questions.\n");
+		
+		// Open the file.
+		fileOpen = fopen(fileName, "r");
+		
+		// Check file open for errors.
+		if(fileOpen == NULL){
 			printf("Error occurred while opening the file.\n");
 			return 0;
-	    }
-	    
-	    // Read from the file and create threads for every member that will do their job.
-	    for(counter = 0; counter < numberOfMembers; counter++){ 																
+		}
+		
+		// Read from the file and create threads for every member that will do their job.
+		for(counter = 0; counter < numberOfMembers; counter++){ 																
 			fscanf(fileOpen, "%d %s %d", &memberToThread.memberId, (memberToThread.questionTopic),  &memberToThread.duration);
 			sleep(memberToThread.duration);				
 			check = pthread_create (&members[counter], NULL, (void *) &questionTyping, (void *)&memberToThread);
 			sleep(1);
-	    }
-
-	    // Wait a signal from the threads to end, before proceeding to the end and signaling the registrar the question preparing is finished.
-	    sem_wait(&canProceed);
-
-	    printf("The Written Exams Committee finished preparing questions.\n");
-
-	    // Signal the registrar to continue.
-	    sem_post(signalToRegistrar);
-
-	    // Return the allocated resources, destroy the semaphore and exit.
-	    sem_destroy(&canProceed);
-	    munmap(applicantList, size);
-	    fclose(fileOpen);		
-	   	exit(0);
-    }
-
-    else{
-    	/*-----------------------------------------*/
-    	/* This is the parent -Registrar- process. */
+		}
+		
+		// Wait a signal from the threads to end, before proceeding to the end and signaling the registrar the question preparing is finished.
+		sem_wait(&canProceed);
+		
+		printf("The Written Exams Committee finished preparing questions.\n");
+		
+		// Signal the registrar to continue.
+		sem_post(signalToRegistrar);
+		
+		// Return the allocated resources, destroy the semaphore and exit.
+		sem_destroy(&canProceed);
+		munmap(applicantList, size);
+		fclose(fileOpen);		
+		exit(0);
+	}
+	
+	else{
 		/*-----------------------------------------*/
-
+		/* This is the parent -Registrar- process. */
+		/*-----------------------------------------*/
+	
 		// Wait the signal from WEC that the questions are ready.
-    	sem_wait(signalToRegistrar);
-
-    	// Start the written exam.
-	    printf("The Registrar started the written exam.\n");
-	    sleep(writtenExamDuration);
-
-	    // Announce the written exam grades of the applicants.
-	    for(counter = 0; counter < NUMBER_OF_APPLICANTS; counter++){
-	    	applicantList[counter].exam_score = rand() % 50; 
-	    	printf("Written exam score of applicant %d is %d.\n", counter+1, applicantList[counter].exam_score);
-	    }
-
-	    //The exam is finished.
-	    printf("The Registrar finished the written exam.\n");
-
-	    // Create a new process to model the Interviewer.
-	    interviewerProcess = fork();
-
-	    if(interviewerProcess == 0){
+	    	sem_wait(signalToRegistrar);
+	
+	    	// Start the written exam.
+		printf("The Registrar started the written exam.\n");
+		sleep(writtenExamDuration);
+		
+		// Announce the written exam grades of the applicants.
+		for(counter = 0; counter < NUMBER_OF_APPLICANTS; counter++){
+		    applicantList[counter].exam_score = rand() % 50; 
+		    printf("Written exam score of applicant %d is %d.\n", counter+1, applicantList[counter].exam_score);
+		}
+		
+		//The exam is finished.
+		printf("The Registrar finished the written exam.\n");
+		
+		// Create a new process to model the Interviewer.
+		interviewerProcess = fork();
+		
+		if(interviewerProcess == 0){
 			/*------------------------------------------*/
 			/* This is the child -Interviewer- process. */
 			/*------------------------------------------*/
+			
+			// Start the interviews.
+			printf("The Interviewer started interviews.\n");
+			
+			// Do the interviews and announce the interview score.
+			for(counter = 0; counter < NUMBER_OF_APPLICANTS; counter++){
+			    // The interview is 'interviewDuration' long.
+			    sleep(interviewDuration);
+			    // After the interview, write down the score to the application form.
+			    applicantList[counter].interview_score = rand() % 50;
+			    // Then announce it.
+			    printf("Interview score of applicant %d is %d.\n", counter + 1, applicantList[counter].interview_score);
+			}
+			
+			printf("The Interviewer finished interviews.\n");
+			
+			// Signal the registrar to continue.
+			sem_post(signalToRegistrar);
+			
+			// Return the allocated resources and exit.
+			munmap(applicantList, size);
+			exit(0);
+		}
 
-	    	// Start the interviews.
-	    	printf("The Interviewer started interviews.\n");
-
-	    	// Do the interviews and announce the interview score.
-	    	for(counter = 0; counter < NUMBER_OF_APPLICANTS; counter++){
-	    		// The interview is 'interviewDuration' long.
-	    		sleep(interviewDuration);
-	    		// After the interview, write down the score to the application form.
-	    		applicantList[counter].interview_score = rand() % 50;
-	    		// Then announce it.
-	    		printf("Interview score of applicant %d is %d.\n", counter + 1, applicantList[counter].interview_score);
-	    	}
-
-	    	printf("The Interviewer finished interviews.\n");
-
-	    	// Signal the registrar to continue.
-	    	sem_post(signalToRegistrar);
-
-	    	// Return the allocated resources and exit.
-	    	munmap(applicantList, size);
-	    	exit(0);
-	    }
-
-	    else{
+	    	else{
 			/*-----------------------------------------*/
-	    	/* This is the parent -Registrar- process. */
+			/* This is the parent -Registrar- process. */
 			/*-----------------------------------------*/
-
+			
 			// Wait the signal from the Interviewer that the interviews has ended.
-	    	sem_wait(signalToRegistrar);
-
-	    	// Start the total score calculation process.
-	    	printf("The Registrar started calculating total scores.\n");
-	    	sleep(TOTAL_SCORE_CALCULATION_DURATION);
-
-	    	// Calculate and announce the total scores
-	    	for(counter = 0; counter < NUMBER_OF_APPLICANTS; counter++){
-	    		applicantList[counter].total_score = applicantList[counter].exam_score + applicantList[counter].interview_score;
-	    		printf("Total score of applicant %d is %d.\n", counter + 1, applicantList[counter].total_score);
-	    	}
-
-	    	printf("The Registrar finished calculating total scores.\n");
-
-	    	// Return the allocated resources.
-	    	munmap(applicantList, size);
-	    }
+			sem_wait(signalToRegistrar);
+			
+			// Start the total score calculation process.
+			printf("The Registrar started calculating total scores.\n");
+			sleep(TOTAL_SCORE_CALCULATION_DURATION);
+			
+			// Calculate and announce the total scores
+			for(counter = 0; counter < NUMBER_OF_APPLICANTS; counter++){
+			    applicantList[counter].total_score = applicantList[counter].exam_score + applicantList[counter].interview_score;
+			    printf("Total score of applicant %d is %d.\n", counter + 1, applicantList[counter].total_score);
+			}
+			
+			printf("The Registrar finished calculating total scores.\n");
+			
+			// Return the allocated resources.
+			munmap(applicantList, size);
+		}
 	}
     
     // Unlink and destroy the semaphores and end the parent process.
@@ -314,17 +306,17 @@ void questionTyping (void *arguments)
 	/*----------------------------------------------------*/
 	/* This is the thread to demonstrate the WEC members. */
 	/*----------------------------------------------------*/
-
+	
 	// Get the arguments into local variables.
-    WECMember *args = (WECMember *)arguments; 			
-    int id = args->memberId; 							
-    int duration = args->duration; 						
-    char *questionTopic = args->questionTopic;			
-    int i = 0;
-
-    // Wait for the signal and enter the critical section.
-    sem_wait(&mutex); 									
-
+	WECMember *args = (WECMember *)arguments; 			
+	int id = args->memberId; 							
+	int duration = args->duration; 						
+	char *questionTopic = args->questionTopic;			
+	int i = 0;
+	
+	// Wait for the signal and enter the critical section.
+	sem_wait(&mutex); 									
+	
 		printf("WEC member %d: A question is prepared on %s\n", id, questionTopic);
 		// Get the questions to the 'questions' array.
 		strncpy(questions[id-1].text, questionTopic, 30);
@@ -334,14 +326,14 @@ void questionTyping (void *arguments)
 		if(allPrepared == totalNumberOfMembers){
 			sem_post(&mutexForApproval);
 		}
-
+	
 	// Increment the semaphore for other threads to continue.
-    sem_post(&mutex);  
-    
-    // Wait for the signal to proceed to the approving stage.
-    sem_wait(&mutexForApproval);
-
-    	// Start approving all the questions.
+	sem_post(&mutex);  
+	
+	// Wait for the signal to proceed to the approving stage.
+	sem_wait(&mutexForApproval);
+	
+	    // Start approving all the questions.
 		for(i=0; i < totalNumberOfMembers; i++){
 			// Questions that do not belong to the member can be approved by the member.
 			if(i != id-1){										
@@ -354,17 +346,17 @@ void questionTyping (void *arguments)
 				}
 			}
 		}
-
+	
 	// Increment the semaphore for other members to approve.
-    sem_post(&mutexForApproval);
-    
-    // Count the finished thread in order to signal the WEC process to proceed.
-    finishedThreads++;
-    // And if all of them had executed, than signal the WEC process to continue.
-    if(finishedThreads == totalNumberOfMembers){
-    	sem_post(&canProceed);
-    }
-
-    // Exit the thread.
-    pthread_exit(0); 
+	sem_post(&mutexForApproval);
+	
+	// Count the finished thread in order to signal the WEC process to proceed.
+	finishedThreads++;
+	// And if all of them had executed, than signal the WEC process to continue.
+	if(finishedThreads == totalNumberOfMembers){
+		sem_post(&canProceed);
+	}
+	
+	// Exit the thread.
+	pthread_exit(0); 
 }
